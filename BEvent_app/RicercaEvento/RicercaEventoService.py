@@ -7,83 +7,98 @@ from ..InterfacciaPersistenza.EventoPubblico import EventoPubblico
 
 def get_eventi():
     """
-    Funzione che recupera dal database i documenti della collezione evento. Una volta recuperati li filtra in modo che
-    la loro data sia maggiore della data odierna, che il ruolo sia 1 così che siano eventi pubblici e controllando che
-    il numero si biglietti disponibili non sia zero.
-
-    :return: lista_eventi (lista di oggetti di tipo Evento Pubblico)
+    Recupera tutti gli eventi pubblici futuri con biglietti disponibili.
+    Gestisce automaticamente i diversi formati di data (stringa, datetime, None).
     """
     db = get_db()
     eventi_collection = db['Evento']
-    data_odierna = datetime.now().strftime("%d-%m-%Y")
+
     eventi_data = list(eventi_collection.find({
-        "$expr": {
-            "$gt": [
-                {
-                    "$dateFromString": {
-                        "dateString": "$Data",
-                        "format": "%d-%m-%Y"
-                    }
-                },
-                {
-                    "$dateFromString": {
-                        "dateString": data_odierna,
-                        "format": "%d-%m-%Y"
-                    }
-                }
-            ]
-        },
         "Ruolo": "1",
         "EventoPubblico.BigliettiDisponibili": {"$ne": "0"}
     }))
+
     lista_eventi = []
+    oggi = datetime.now()
 
     for data in eventi_data:
-        evento = EventoPubblico(data, data)
-        lista_eventi.append(evento)
+        data_evento_raw = data.get("Data")
+
+        try:
+            # Se la data è già datetime
+            if isinstance(data_evento_raw, datetime):
+                data_evento = data_evento_raw
+            # Se è stringa
+            elif isinstance(data_evento_raw, str):
+                # prova diversi formati (a volte cambia)
+                for fmt in ("%d-%m-%Y", "%Y-%m-%d"):
+                    try:
+                        data_evento = datetime.strptime(data_evento_raw, fmt)
+                        break
+                    except ValueError:
+                        data_evento = None
+            else:
+                data_evento = None
+
+            # Ignora eventi con data non valida o passata
+            if not data_evento or data_evento < oggi:
+                continue
+
+            evento = EventoPubblico(data, data)
+            lista_eventi.append(evento)
+
+        except Exception as e:
+            print(f"⚠️ Errore parsing data evento: {data_evento_raw} -> {e}")
+            continue
 
     return lista_eventi
 
 
 def get_eventi_sponsorizzati():
     """
-       Ottiene una lista di eventi sponsorizzati che soddisfano determinati criteri.
-
-       :return: List[EventoPubblico]
-           Una lista di oggetti EventoPubblico rappresentanti gli eventi sponsorizzati.
-
-       """
+    Recupera gli eventi sponsorizzati (isPagato=True) futuri con biglietti disponibili.
+    Gestisce automaticamente date non stringa o malformate.
+    """
     db = get_db()
     eventi_collection = db['Evento']
-    data_odierna = datetime.now().strftime("%d-%m-%Y")
+
     eventi_data = list(eventi_collection.find({
-        "$expr": {
-            "$gt": [
-                {
-                    "$dateFromString": {
-                        "dateString": "$Data",
-                        "format": "%d-%m-%Y"
-                    }
-                },
-                {
-                    "$dateFromString": {
-                        "dateString": data_odierna,
-                        "format": "%d-%m-%Y"
-                    }
-                }
-            ]
-        },
         "Ruolo": "1",
         "isPagato": True,
         "EventoPubblico.BigliettiDisponibili": {"$ne": "0"}
     }))
+
     lista_eventi_sponsorizzati = []
+    oggi = datetime.now()
 
     for data in eventi_data:
-        evento = EventoPubblico(data, data)
-        lista_eventi_sponsorizzati.append(evento)
+        data_evento_raw = data.get("Data")
+
+        try:
+            if isinstance(data_evento_raw, datetime):
+                data_evento = data_evento_raw
+            elif isinstance(data_evento_raw, str):
+                for fmt in ("%d-%m-%Y", "%Y-%m-%d"):
+                    try:
+                        data_evento = datetime.strptime(data_evento_raw, fmt)
+                        break
+                    except ValueError:
+                        data_evento = None
+            else:
+                data_evento = None
+
+            if not data_evento or data_evento < oggi:
+                continue
+
+            evento = EventoPubblico(data, data)
+            lista_eventi_sponsorizzati.append(evento)
+
+        except Exception as e:
+            print(f"⚠️ Errore parsing data evento sponsorizzato: {data_evento_raw} -> {e}")
+            continue
 
     return lista_eventi_sponsorizzati
+
 
 
 def serializza_eventi(evento):

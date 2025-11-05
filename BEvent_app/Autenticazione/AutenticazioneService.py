@@ -406,93 +406,73 @@ def get_dati_area_organizzatore(id_organizzatore):
 
 def get_dati_home_organizzatore(id_organizzatore):
     """
-    Ottiene i dati per la home page di un organizatore
+    Ottiene i dati per la home page di un organizzatore
     :param id_organizzatore: (str) id dell'organizzatore di cui si vogliono ottenere i dati
-    :return: Una tupla contenente un'istanza di Evento_privato e una lista di EventoPubblico
+    :return: Una tupla contenente un'istanza di EventoPrivato e una lista di EventoPubblico
     """
 
-    data_odierna = datetime.now().strftime("%d-%m-%Y")
+    oggi = datetime.now()
 
-    query = {
+    # --- Recupera evento privato più vicino (senza $dateFromString)
+    eventi_privati_data = list(db['Evento'].find({
         "Ruolo": "2",
-        "EventoPrivato.Organizzatore": id_organizzatore,
-        "$expr": {
-            "$gte": [
-                {
-                    "$dateFromString": {
-                        "dateString": "$Data",
-                        "format": "%d-%m-%Y"
-                    }
-                },
-                {
-                    "$dateFromString": {
-                        "dateString": data_odierna,
-                        "format": "%d-%m-%Y"
-                    }
-                }
-            ]
-        },
-    }
-    try:
-        evento_data = db['Evento'].find(query).sort("Data", 1).limit(1).next()
-        evento_privato = EventoPrivato(evento_data, evento_data)
-    except StopIteration:
+        "EventoPrivato.Organizzatore": id_organizzatore
+    }).sort("Data", 1))
 
-        evento_privato = None
+    evento_privato = None
 
-    query = {
+    for ev in eventi_privati_data:
+        data_raw = ev.get("Data")
+        data_evento = None
+        try:
+            if isinstance(data_raw, datetime):
+                data_evento = data_raw
+            elif isinstance(data_raw, str):
+                for fmt in ("%d-%m-%Y", "%Y-%m-%d"):
+                    try:
+                        data_evento = datetime.strptime(data_raw, fmt)
+                        break
+                    except ValueError:
+                        continue
+
+            if data_evento and data_evento >= oggi:
+                evento_privato = EventoPrivato(ev, ev)
+                break
+
+        except Exception as e:
+            print(f"⚠️ Errore parsing evento privato: {data_raw} -> {e}")
+            continue
+
+    # --- Recupera eventi pubblici validi (senza $dateFromString)
+    eventi_pubblici_data = list(db['Evento'].find({
         "Ruolo": "1",
-        "$expr": {
-            "$gte": [
-                {
-                    "$dateFromString": {
-                        "dateString": "$Data",
-                        "format": "%d-%m-%Y"
-                    }
-                },
-                {
-                    "$dateFromString": {
-                        "dateString": data_odierna,
-                        "format": "%d-%m-%Y"
-                    }
-                }
-            ]
-        },
         "isPagato": True
-    }
+    }).sort("Data", 1).limit(10))
 
-    evento_pubblico_data = db['Evento'].find(query).sort("Data", 1).limit(4)
-    if evento_pubblico_data:
-        eventi_pubblici = []
-        for data in evento_pubblico_data:
-            evento_pubblico = EventoPubblico(data, data)
-            eventi_pubblici.append(evento_pubblico)
-    else:
-        query = {
-            "Ruolo": "1",
-            "$expr": {
-                "$gte": [
-                    {
-                        "$dateFromString": {
-                            "dateString": "$Data",
-                            "format": "%d-%m-%Y"
-                        }
-                    },
-                    {
-                        "$dateFromString": {
-                            "dateString": data_odierna,
-                            "format": "%d-%m-%Y"
-                        }
-                    }
-                ]
-            },
-            "isPagato": False
-        }
-        evento_pubblico_data = db['Evento'].find(query).sort("Data", 1).limit(2)
-        eventi_pubblici = []
-        for data in evento_pubblico_data:
-            evento_pubblico = EventoPubblico(data, data)
-            eventi_pubblici.append(evento_pubblico)
+    eventi_pubblici = []
+
+    for ev in eventi_pubblici_data:
+        data_raw = ev.get("Data")
+        data_evento = None
+        try:
+            if isinstance(data_raw, datetime):
+                data_evento = data_raw
+            elif isinstance(data_raw, str):
+                for fmt in ("%d-%m-%Y", "%Y-%m-%d"):
+                    try:
+                        data_evento = datetime.strptime(data_raw, fmt)
+                        break
+                    except ValueError:
+                        continue
+
+            if data_evento and data_evento >= oggi:
+                eventi_pubblici.append(EventoPubblico(ev, ev))
+                if len(eventi_pubblici) >= 4:  # massimo 4 eventi
+                    break
+
+        except Exception as e:
+            print(f"⚠️ Errore parsing evento pubblico: {data_raw} -> {e}")
+            continue
 
     return evento_privato, eventi_pubblici
 

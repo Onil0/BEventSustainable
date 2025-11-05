@@ -11,44 +11,38 @@ aut = Blueprint('aut', __name__)
 @aut.route('/login', methods=['POST'])
 def login():
     """
-    Gestice il processo di login
+    Gestisce il processo di login
     - verifica le credenziali dell'utente
-    - se le credenziali sono valide, effettua il login e reindirizza l'utente alla pagina appropriata in base al ruolo
-    - se le credenziali non sono valide, reindirizza l'utente alla home page
-    Returns: una risposta appropriata in base al risultato del login
+    - se le credenziali sono valide, effettua il login e reindirizza l'utente alla pagina appropriata
+    - se le credenziali non sono valide, torna alla home
     """
-    if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        # bottone = request.form.get('accesso')
+    email = request.form.get('email')
+    password = request.form.get('password')
 
-        user = AutenticazioneService.verify_user(email, password)
+    user = AutenticazioneService.verify_user(email, password)
 
-        if user:
+    if not user:
+        flash("Credenziali errate. Riprova.", "error")
+        return redirect('/')  # torni alla home
 
-            login_user(user)
+    # Login riuscito
+    login_user(user)
+    session['id'] = current_user.get_id()
+    session['ruolo'] = user.ruolo
+    session['nome_utente'] = user.nome_utente
+    session['regione'] = user.regione
 
-            session['id'] = current_user.get_id()
-            session['ruolo'] = user.ruolo
-            session['nome_utente'] = user.nome_utente
-            session['regione'] = user.regione
-
-            if user.ruolo == "1":
-                return home()
-            elif user.ruolo == "2":
-                # if bottone == "accesso":
-                return redirect('/home_organizzatore')
-            # else:
-            # return redirect(request.url)
-            elif user.ruolo == "3":
-                session['is_location'] = user.isLocation
-                return redirect('/fornitori')
-            else:
-                return home()
-        else:
-            return home()
+    # Redireziona in base al ruolo
+    if user.ruolo == "1":
+        return redirect('/')  # admin → home principale
+    elif user.ruolo == "2":
+        return redirect('/home_organizzatore')
+    elif user.ruolo == "3":
+        session['is_location'] = user.isLocation
+        return redirect('/fornitori')
     else:
-        return home()
+        return redirect('/')
+
 
 
 @aut.route('/logout')
