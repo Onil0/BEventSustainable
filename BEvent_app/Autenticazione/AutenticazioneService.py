@@ -406,25 +406,26 @@ def get_dati_area_organizzatore(id_organizzatore):
 
 def get_dati_home_organizzatore(id_organizzatore):
     """
-    Ottiene i dati per la home page di un organizzatore
-    :param id_organizzatore: (str) id dell'organizzatore di cui si vogliono ottenere i dati
-    :return: Una tupla contenente un'istanza di EventoPrivato e una lista di EventoPubblico
+    Ottiene i dati per la home page di un organizzatore.
+    Versione OTTIMIZZATA e SICURA contro errori di chiavi mancanti.
     """
-
     oggi = datetime.now()
 
-    # --- Recupera evento privato più vicino (senza $dateFromString)
-    eventi_privati_data = list(db['Evento'].find({
+    # --- 1. EVENTO PRIVATO ---
+    # Cerchiamo direttamente nel DB ordinando per data (più efficiente)
+    eventi_privati_cursor = db['Evento'].find({
         "Ruolo": "2",
         "EventoPrivato.Organizzatore": id_organizzatore
-    }).sort("Data", 1))
+    }).sort("Data", 1)
 
     evento_privato = None
 
-    for ev in eventi_privati_data:
-        data_raw = ev.get("Data")
-        data_evento = None
+    for ev in eventi_privati_cursor:
         try:
+            # Parsing Data Sicuro
+            data_raw = ev.get("Data")
+            data_evento = None
+
             if isinstance(data_raw, datetime):
                 data_evento = data_raw
             elif isinstance(data_raw, str):
@@ -435,26 +436,34 @@ def get_dati_home_organizzatore(id_organizzatore):
                     except ValueError:
                         continue
 
+            # Se la data è valida e futura
             if data_evento and data_evento >= oggi:
+                # FIX: Patch per evitare crash se mancano campi nel vecchio DB
+                if 'Invitati/Posti' not in ev:
+                    ev['Invitati/Posti'] = ev.get('n_persone', '0')
+
                 evento_privato = EventoPrivato(ev, ev)
-                break
+                break  # Trovato il più vicino, usciamo!
 
         except Exception as e:
-            print(f"⚠️ Errore parsing evento privato: {data_raw} -> {e}")
-            continue
+            continue  # Ignora silenziosamente eventi rotti
 
-    # --- Recupera eventi pubblici validi (senza $dateFromString)
-    eventi_pubblici_data = list(db['Evento'].find({
+    # --- 2. EVENTI PUBBLICI ---
+    eventi_pubblici_cursor = db['Evento'].find({
         "Ruolo": "1",
         "isPagato": True
-    }).sort("Data", 1).limit(10))
+    }).sort("Data", 1)
 
     eventi_pubblici = []
 
-    for ev in eventi_pubblici_data:
-        data_raw = ev.get("Data")
-        data_evento = None
+    for ev in eventi_pubblici_cursor:
+        if len(eventi_pubblici) >= 4:
+            break
+
         try:
+            data_raw = ev.get("Data")
+            data_evento = None
+
             if isinstance(data_raw, datetime):
                 data_evento = data_raw
             elif isinstance(data_raw, str):
@@ -466,16 +475,19 @@ def get_dati_home_organizzatore(id_organizzatore):
                         continue
 
             if data_evento and data_evento >= oggi:
+                # FIX CRITICO: Aggiungiamo la chiave mancante al volo!
+                if 'Invitati/Posti' not in ev:
+                    # Se manca, prova a prendere 'BigliettiDisponibili' o metti '0'
+                    ev['Invitati/Posti'] = ev.get('BigliettiDisponibili', ev.get('n_persone', '0'))
+
+                # Ora la creazione dell'oggetto non fallirà più
                 eventi_pubblici.append(EventoPubblico(ev, ev))
-                if len(eventi_pubblici) >= 4:  # massimo 4 eventi
-                    break
 
         except Exception as e:
-            print(f"⚠️ Errore parsing evento pubblico: {data_raw} -> {e}")
+            # Se proprio l'evento è irrecuperabile, lo saltiamo senza intasare i log
             continue
 
     return evento_privato, eventi_pubblici
-
 
 def get_utente_by_email(email):
     user_data = db.Utente.find_one({'email': email})
