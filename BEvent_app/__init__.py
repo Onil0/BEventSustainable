@@ -1,7 +1,6 @@
 from bson import ObjectId
-from flask import Flask, request  # Aggiunto 'request' qui, serviva per add_header
+from flask import Flask, request
 from flask_login import LoginManager
-# --- GREEN CODING: Import Minify ---
 from flask_minify import Minify
 
 from BEvent_app.Routes import home
