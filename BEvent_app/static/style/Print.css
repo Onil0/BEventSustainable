@@ -1,0 +1,39 @@
+/* risolviamo il Print Stylesheet di GreenIT */
+
+/* 1. Nasconde navigazione e elementi decorativi pesanti */
+header, .header, .header__content, .modal, .button-header, footer {
+    display: none !important;
+}
+
+/* 2. Risparmio inchiostro: sfondo bianco, testo nero, niente immagini di sfondo */
+body {
+    background-color: white !important;
+    background-image: none !important;
+    color: black !important;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 12pt;
+}
+
+/* 3. Layout ottimizzato per foglio A4 */
+.container, .content {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+/* 4. Gestione Link: mostra l'URL accanto al link */
+a {
+    text-decoration: underline;
+    color: black !important;
+}
+a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+}
+
+/* 5. Evita di spezzare gli elementi a metà pagina */
+img, table, blockquote {
+    page-break-inside: avoid;
+}
