@@ -12,6 +12,7 @@ from .GestioneEvento.GestioneEventoController import ge
 from .Fornitori.FornitoriController import Fornitori
 from .RicercaEvento.RicercaEventoController import re
 from .FeedBack.FeedBackController import fb
+from flask import request
 
 
 def create_app():
@@ -49,5 +50,18 @@ def create_app():
     @app.route('/')
     def index():
         return home()
+
+    # --- GREEN: Cache Control Optimization ---
+
+    @app.after_request
+    def add_header(response):
+        """
+        Aggiunge header di caching per ridurre il traffico di rete ripetuto.
+        Impatto: Riduce i download ridondanti (minore consumo server e client).
+        """
+        # Applica cache solo ai file statici (css, js, immagini)
+        if request.path.startswith('/static'):
+            response.headers['Cache-Control'] = 'public, max-age=3600'
+        return response
 
     return app

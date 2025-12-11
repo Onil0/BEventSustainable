@@ -2,5 +2,5 @@ projectKey=BEventSustainable
 serverUrl=http://localhost:9000
 serverVersion=25.11.0.114957
 dashboardUrl=http://localhost:9000/dashboard?id=BEventSustainable
-ceTaskId=a093d71f-1406-420c-8c74-6adb9c8b64ab
-ceTaskUrl=http://localhost:9000/api/ce/task?id=a093d71f-1406-420c-8c74-6adb9c8b64ab
+ceTaskId=65669f84-6108-4c1a-9ce3-2d462a3a2b00
+ceTaskUrl=http://localhost:9000/api/ce/task?id=65669f84-6108-4c1a-9ce3-2d462a3a2b00
