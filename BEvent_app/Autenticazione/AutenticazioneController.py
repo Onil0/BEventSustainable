@@ -26,11 +26,7 @@ def login():
         return redirect('/')  # torni alla home
 
     # Login riuscito
-    login_user(user)
-    session['id'] = current_user.get_id()
-    session['ruolo'] = user.ruolo
-    session['nome_utente'] = user.nome_utente
-    session['regione'] = user.regione
+    session.update(build_sessione_utente(user))
 
     # Redireziona in base al ruolo
     if user.ruolo == "1":
@@ -181,3 +177,12 @@ def home_organizzatore():
     evento_privato, eventi_pubblici = get_dati_home_organizzatore(id_organizzatore)
 
     return organizzatore_page(evento_privato=evento_privato, eventi_pubblici=eventi_pubblici)
+
+
+def build_sessione_utente(user):
+    return {
+        "id": user.id,
+        "ruolo": user.ruolo,
+        "nome_utente": user.nome_utente,
+        "regione": user.regione
+    }
