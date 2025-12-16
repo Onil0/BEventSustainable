@@ -3,18 +3,17 @@ import time
 import os
 from codecarbon import EmissionsTracker
 
-# Importiamo la funzione "CPU-intensive" dal tuo progetto.
+
 # Questa funzione è stata scelta perché rappresenta un carico computazionale puro (algoritmo di filtraggio),
 # ideale per misurare l'efficienza del codice Python indipendentemente dal database o dalla rete.
 from BEvent_app.GestioneEvento.GestioneEventoService import filtrare_servizi_per_fornitore
 
 
-# =================================================================================================
+
 # SEZIONE 1: MOCKING E GENERAZIONE DATI SINTETICI
-# =================================================================================================
 # In questa sezione creiamo oggetti "finti" (Mock) che simulano la struttura del database.
-# OBIETTIVO GREEN: Evitare di accendere il database reale durante i micro-benchmark riduce
-# drasticamente l'overhead energetico del test stesso ("Green Testing").
+# OBIETTIVO GREEN: Evitare di accendere il database reale durante i micro-benchmark
+
 
 class MockFornitore:
     """Classe Mock per simulare un oggetto Fornitore senza dipendenze dal DB."""
@@ -47,7 +46,7 @@ def genera_dati_stress():
         # Logica di distribuzione:
         # Usiamo il modulo % 2000 per assegnare i servizi.
         # Poiché i fornitori sono solo 1000 (ID 0-999), metà dei servizi (ID 1000-1999)
-        # non troveranno corrispondenza. Questo costringe l'algoritmo di filtro a lavorare davvero.
+        # non troveranno corrispondenza costringndo l algoritmo a lavorare intensa,memte
         fornitore_id = i % 2000
         lista_servizi.append(MockServizio(i, fornitore_id))
 
@@ -58,11 +57,10 @@ def genera_dati_stress():
 SERVIZI_MOCK, FORNITORI_MOCK = genera_dati_stress()
 
 
-# =================================================================================================
+
 # SEZIONE 2: TEST DI EFFICIENZA ALGORITMICA (OPS)
-# =================================================================================================
 # Questo test utilizza la libreria `pytest-benchmark`.
-# OBIETTIVO: Misurare la velocità pura e il Throughput (Operazioni Per Secondo).
+# OBIETTIVO: Misurare la velocità pura e il Throughput.
 # Un alto numero di OPS indica un codice ottimizzato che spreca pochi cicli di clock.
 
 def test_benchmark_filtro_servizi(benchmark):
@@ -74,14 +72,12 @@ def test_benchmark_filtro_servizi(benchmark):
     # calcolando statistiche precise al microsecondo.
     risultato = benchmark(filtrare_servizi_per_fornitore, SERVIZI_MOCK, FORNITORI_MOCK)
 
-    # Assert funzionale: verifichiamo che il filtro abbia lavorato correttamente
-    # e non abbia restituito una lista vuota per errore.
+
     assert len(risultato) > 0
 
 
-# =================================================================================================
+
 # SEZIONE 3: TEST DI IMPATTO ENERGETICO (JOULE/CO2)
-# =================================================================================================
 # Questo test utilizza la libreria `CodeCarbon`.
 # OBIETTIVO: Misurare il consumo energetico reale (Watt/Joule) della CPU sotto sforzo.
 # Poiché una singola esecuzione è troppo veloce per essere misurata dai sensori hardware,
@@ -93,12 +89,12 @@ def test_energy_profile_filtro_servizi():
     Esegue la funzione in loop per 5 secondi per permettere a CodeCarbon
     di rilevare il consumo energetico della CPU tramite sensori RAPL/PowerMetrics.
     """
-    # Configura CodeCarbon per salvare il report 'emissions.csv' nella cartella corrente
+
     output_dir = os.getcwd()
 
     tracker = EmissionsTracker(
         project_name="Micro_Benchmark_Filter",
-        measure_power_secs=0.1,  # Campionamento ad alta frequenza (ogni 0.1s)
+        measure_power_secs=0.1,
         save_to_file=True,
         output_dir=output_dir
     )
@@ -119,28 +115,27 @@ def test_energy_profile_filtro_servizi():
 
     emissioni = tracker.stop()  # Fine misurazione e salvataggio CSV
 
-    # Stampa dei risultati a video per feedback immediato
+
     print(f"[ENERGY] Test completato.")
     print(f" -> Iterazioni totali: {iterazioni}")
     print(f" -> Throughput medio: {iterazioni / duration:.2f} iter/s")
     print(f" -> Emissioni CO2 stimate: {emissioni} kg")
 
 
-# --- AGGIUNTA PER CONFRONTO (Sotto al codice esistente) ---
 
-# Funzione "Lenta" (Simuliamo come era il codice PRIMA dell'ottimizzazione)
+# Funzione Lenta per Simulare come era il codice PRIMA dell'ottimizzazione
 def filtrare_servizi_inefficiente(servizi_non_filtrati, fornitori_filtrati):
     """
     Versione NON OTTIMIZZATA dell'algoritmo.
     Usa una lista invece di un set. La ricerca 'in list' è O(N),
     rendendo l'algoritmo complessivo O(N*M) (molto lento).
     """
-    # Lista semplice (NO Set)
+    # Lista semplice
     ids_list = [f.id for f in fornitori_filtrati]
 
     servizi_filtrati = []
     for servizio in servizi_non_filtrati:
-        # Questa riga è lenta: cerca linearmente nella lista ogni volta
+        # cerca linearmente nella lista ogni volta
         if servizio.fornitore_associato in ids_list:
             servizi_filtrati.append(servizio)
     return servizi_filtrati
@@ -152,7 +147,7 @@ def test_benchmark_filtro_slow(benchmark):
     assert len(risultato) > 0
 
 
-# Benchmark PEDANTIC (Precisione Massima per la versione veloce)
+# Benchmark PEDANTIC Precisione Massima per la versione veloce
 def test_benchmark_filtro_pedantic(benchmark):
     """
     Esegue il benchmark in modalità 'Pedantic' per controllare esattamente
